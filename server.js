@@ -29,7 +29,7 @@ app.use('/images',express.static('images'));
 //POST request
 app.post('/submit',upload.any(), async (req,res) => {
     
-    const {name, userName } = req.body;
+    const {name, username } = req.body;
     let images;
 
     if(req.files.length > 1) {
@@ -39,22 +39,46 @@ app.post('/submit',upload.any(), async (req,res) => {
     } else {
         images = [];
     }
-
-    const randomNum = Math.floor(100 + Math.random() * 900);
-    const defaultPassword = userName.toLowerCase() + randomNum;
-    
-    //Hash the default password
-    const hashedPassword = await bcrypt.hash(defaultPassword,10);
-    
-    const sql = `INSERT INTO user_details (name, username, password, images, role) VALUES (?,?,?,?,'USER')`;
-    
-    db.query(sql, [name, userName, hashedPassword, images], (err, result) => {
-        if(err) {
-            console.error('Error inserting user data:',err.message);
-            return res.status(500).json({ error: 'Database error' });
+    try{
+        
+        const specialCharRegex = /^[a-zA-Z0-9!@#$%\^&*)(+=._-]*$/;
+        if (!name || !username) {
+            return res.status(400).json({ message: 'Name and username are required.' });
         }
-        res.status(200).json({ message: 'User data submitted successfully', defaultPassword });
-    }); 
+        if (!specialCharRegex.test(username)) {
+            return res.status(400).json({ message: 'Username must include at least one special character.' });
+        }
+        //Check if name or username already exists in the database
+        const query = `SELECT * FROM user_details WHERE name = ? OR username = ?`;
+        db.query(query,[name, username], async (err,result) => {
+            if(err) {
+                console.error("Database error:",err);
+                return res.status(500).json({ message: 'Server error' });
+            }
+
+            if(result.length > 0) {
+                return res.status(400).json({ message: 'Name or Username already exists' });
+            }
+            const randomNum = Math.floor(100 + Math.random() * 900);
+            const defaultPassword = username.toLowerCase() + randomNum;
+            
+            //Hash the default password
+            const hashedPassword = await bcrypt.hash(defaultPassword,10);
+            
+            const sql = `INSERT INTO user_details (name, username, password, images, role) VALUES (?,?,?,?,'USER')`;
+            
+            db.query(sql, [name, username, hashedPassword, images], (err, result) => {
+                if(err) {
+                    console.error('Error inserting user data:',err.message);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                res.status(200).json({ message: 'User data submitted successfully', defaultPassword });
+            }); 
+        });
+    } catch(error) {
+        console.error('Server error:',error);
+        res.status(500).json({message: 'Server error'});
+    }
 });
 
 app.post('/admin-login', (req, res) => {
