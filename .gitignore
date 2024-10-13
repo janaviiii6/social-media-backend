@@ -1,0 +1,7 @@
+# Ignore image uploads
+images/
+node_modules/
+
+db.js
+
+.env
