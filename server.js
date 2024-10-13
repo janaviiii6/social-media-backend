@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const db = require('./db');
 const multer = require('multer');
 const fs = require('fs');
-
+const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(cors());
@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 //POST request
-app.post('/submit',upload.any(),(req,res) => {
+app.post('/submit',upload.any(), async (req,res) => {
     
     const {name, userName } = req.body;
     let images;
@@ -41,10 +41,12 @@ app.post('/submit',upload.any(),(req,res) => {
     const randomNum = Math.floor(100 + Math.random() * 900);
     const defaultPassword = userName.toLowerCase() + randomNum;
     
+    //Hash the default password
+    const hashedPassword = await bcrypt.hash(defaultPassword,10);
     
     const sql = `INSERT INTO user_details (name, username, password, images, role) VALUES (?,?,?,?,'USER')`;
     
-    db.query(sql, [name, userName, defaultPassword, images], (err, result) => {
+    db.query(sql, [name, userName, hashedPassword, images], (err, result) => {
         if(err) {
             console.error('Error inserting user data:',err.message);
             return res.status(500).json({ error: 'Database error' });
