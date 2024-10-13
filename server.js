@@ -24,16 +24,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+app.use('/images',express.static('images'));
+
 //POST request
 app.post('/submit',upload.any(), async (req,res) => {
     
     const {name, userName } = req.body;
     let images;
 
-    if(req.files.length === 1) {
+    if(req.files.length > 1) {
+        images = JSON.stringify(req.file.map(file => file.filename));
+    } else if(req.files.length === 1) {
         images = req.files[0].filename;
-    } else if(req.files.length > 1) {
-        images = req.files.map(file => file.filename);
     } else {
         images = [];
     }
@@ -64,7 +66,28 @@ app.get('/user-details',(req,res) => {
             console.err('Error fetching user-details:', err.message);
             return res.status(500).json({ error: 'Database Error' });
         }
-        res.status(200).json(results);
+
+        const users = results.map(user => {
+            let images;
+
+            if (user.images.startsWith('[') && user.images.endsWith(']')) {
+                try {
+                    images = JSON.parse(user.images);
+                } catch (e) {
+                    console.error('Error parsing images:', e.message);
+                    images = [user.images]; 
+                }
+            } else {
+                images = [user.images];
+            }
+
+            return {
+                ...user,
+                images
+            };
+        });
+
+        res.status(200).json(users);
     });
 });
 
