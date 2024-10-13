@@ -33,7 +33,7 @@ app.post('/submit',upload.any(), async (req,res) => {
     let images;
 
     if(req.files.length > 1) {
-        images = JSON.stringify(req.file.map(file => file.filename));
+        images = JSON.stringify(req.files.map(file => file.filename));
     } else if(req.files.length === 1) {
         images = req.files[0].filename;
     } else {
