@@ -57,6 +57,45 @@ app.post('/submit',upload.any(), async (req,res) => {
     }); 
 });
 
+app.post('/admin-login', (req, res) => {
+    const { username, password } = req.body; 
+    const sql = `SELECT * FROM user_details WHERE username = ? AND role = 'ADMIN'`;
+    console.log(sql);
+
+    db.query(sql, [username], async (err, result) => {
+        if (err) {
+            console.log(username);
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Server error' });
+        }
+        console.log('Query Result:', result);
+        if (result.length === 0) {
+            console.log(`No user found with that username: ${username}`);
+            return res.status(401).json({ message: 'Invalid username or password' });
+        }
+
+        const user = result[0];
+        console.log('User fetched:', user);
+
+        try {
+            
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+
+            if (!isPasswordValid) {
+                console.log('Password mismatch');
+                return res.status(401).json({ message: 'Invalid username or password' });
+            }
+
+            console.log('Login successful');
+            return res.status(200).json({ message: 'Login successful' });
+        } catch (error) {
+            console.error('Error comparing passwords:', error);
+            return res.status(500).json({ message: 'Server error during login' });
+        }
+    });
+});
+
+
 //GET request for fetching user details
 app.get('/user-details',(req,res) => {
     const sql = 'SELECT * FROM user_details';
